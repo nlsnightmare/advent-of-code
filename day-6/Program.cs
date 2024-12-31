@@ -1,4 +1,4 @@
-﻿bool ProducesLoop(Board board, Position obsPosition)
+bool ProducesLoop(Board board, Position obsPosition)
 {
     var currentTile = board.GetOrDefault(obsPosition);
     if (currentTile != Tile.EMPTY)
