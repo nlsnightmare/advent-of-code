@@ -1,153 +1,67 @@
-﻿// See https://aka.ms/new-console-template for more information
-
-using System.Text.RegularExpressions;
-using Keypad = System.Collections.Generic.Dictionary<char, Vec2>;
-
-// Console.WriteLine($"Answer: {answer}");
-
-Keypad numpad = new()
-{
-    { '7', new(0, 0) },
-    { '8', new(1, 0) },
-    { '9', new(2, 0) },
-    { '4', new(0, 1) },
-    { '5', new(1, 1) },
-    { '6', new(2, 1) },
-    { '1', new(0, 2) },
-    { '2', new(1, 2) },
-    { '3', new(2, 2) },
-    { ' ', new(0, 3) },
-    { '0', new(1, 3) },
-    { 'A', new(2, 3) },
-};
-
-Keypad arrows = new()
-{
-    { ' ', new(0, 0) },
-    { '^', new(1, 0) },
-    { 'A', new(2, 0) },
-    { '<', new(0, 1) },
-    { 'v', new(1, 1) },
-    { '>', new(2, 1) },
-};
-
-#if false
+﻿#if false
 var lines = File.ReadLines("./input.txt").Select(line => line.Trim());
-#else
-var lines = File.ReadLines("./example.txt")
-    .Select(line => line.Trim())
-    .Where(t => t.StartsWith("379"));
-#endif
 
-var score = 0;
+Console.WriteLine("### ATTEMPTING TO SOLVE PART 1 ###");
+var totalScore = 0;
 foreach (var line in lines)
 {
+    Console.WriteLine($"# Handling line {line}");
+
     var result = Part1(line);
     if (result is null)
-        continue;
-    Console.WriteLine($"{line} -> {result.Count()} {result}");
-    if (Debug(result, 3) != line)
     {
-        Console.WriteLine("it broke");
+        Console.WriteLine($"Unable to solve line {line}");
+        return;
     }
-    Console.WriteLine(Debug(result, 0));
-    Console.WriteLine(Debug(result, 1));
-    Console.WriteLine(Debug(result, 2));
-    Console.WriteLine(Debug(result, 3));
 
-    score += Complexity(result, line);
+    int score = Utils.Complexity(result, line);
+    totalScore += score;
+    Console.WriteLine($"{line} -> {result.Length}");
 }
 
-Console.WriteLine($"Total score: {score}");
+Console.WriteLine($"Total score: {totalScore}");
+#else
 
-string Part1(string code, bool debug = false) =>
-    new Keypad[] { numpad, arrows, arrows }.Aggregate(code, (acc, keys) => Type(acc, keys).Value);
+Console.WriteLine("### DEBUG SECTION ###");
 
-int Complexity(string steps, string code) =>
-    int.Parse(new Regex(@"(\d+)").Match(code).Value) * steps.Count();
-
-string Debug(string steps, int levels)
-{
-    var keypads = new[] { arrows, arrows, numpad }.Take(levels);
-    foreach (var keypad in keypads)
-    {
-        string value = "";
-        var pos = keypad['A'];
-        for (int i = 0; i < steps.Count(); i++)
+var inputs = File.ReadLines("./example.txt")
+.Select(line =>
         {
-            var step = steps[i];
-            var dir = step switch
-            {
-                '>' => new Vec2(1, 0),
-                '<' => new Vec2(-1, 0),
-                '^' => new Vec2(0, -1),
-                'v' => new Vec2(0, 1),
-                _ => null,
-            };
+        var parts = line.Trim().Split(':');
+        var actual = Part1(parts[0]);
+        return new { input = parts[0], expected = parts[1].Trim(), actual = actual };
+    });
 
-            if (dir is not null)
-            {
-                pos += dir;
-                if (keypad.First(p => p.Value == pos).Key == ' ')
-                {
-                    // Console.WriteLine("invalid key detected :(" + string.Join("", steps.Take(i + 1)));
-                }
-            }
-            else
-            {
-                var key = keypad.First(p => p.Value == pos).Key;
-                value += key;
-            }
-        }
-        steps = value;
-    }
-    return steps;
+var scores = inputs.Select(line => Utils.Complexity(line.actual, line.input));
+var totalScore = scores.Sum();
+
+var err = inputs.Where((a) => a.actual.Length != a.expected.Length);
+
+foreach (var input in inputs) {
+    Solver.DebugPrint(input.actual);
 }
-
-TypeResult Type(string value, Keypad keys)
+foreach (var e in err)
 {
-    var current = keys['A'];
+    Console.WriteLine($"Failed to correctly calculate score of {e.input}");
 
-    var steps = new List<char>();
-    var empty = keys[' '];
-    foreach (var character in value.ToCharArray())
+    var expected = e.expected;
+    var actual = e.actual;
+    for (int level = 0; level < 4; level++)
     {
-        var target = keys[character];
-        if (target is null)
-            throw new Exception($"invalid character '{character}' detected!");
+        Console.WriteLine($"Testing in level {level}");
 
-        var direction = target - current;
+        string newExpected = Solver.Debug(expected, level);
+        Console.WriteLine($"expected: {newExpected}");
 
-        var chunk = new List<char>();
-        chunk.AddRange(Enumerable.Repeat(direction.y > 0 ? 'v' : '^', Math.Abs(direction.y)));
-        chunk.AddRange(Enumerable.Repeat(direction.x > 0 ? '>' : '<', Math.Abs(direction.x)));
+        string newActual = Solver.Debug(actual, level);
+        Console.WriteLine($"actual:   {newActual}");
 
-        steps.AddRange(Optimize(chunk));
-        steps.Add('A');
-
-        current = target;
-    }
-    return new(steps, keys.First(p => p.Value == current).Key);
-}
-
-List<char> Optimize(List<char> steps)
-{
-    List<char> result = steps
-        .OrderByDescending(v => v) // group all similar together
-        .OrderBy(step => Vec2.Manhattan(arrows['A'], arrows[step]))
-        .ToList();
-
-    var stringResult = string.Join("", result);
-    var stringInitial = string.Join("", steps);
-    if (stringInitial != stringResult)
-    {
-        Console.WriteLine(stringResult + "\n" + stringInitial);
+        if (newExpected.Length != newActual.Length)
+            Console.WriteLine("Discrepency detected!\n");
     }
 
-    return result;
-}
+} 
+#endif
 
-record TypeResult(List<char> steps, char position)
-{
-    public string Value => string.Join("", steps);
-}
+string Part1(string code) =>
+new Keypad[] { Utils.Numpad, Utils.Arrows, Utils.Arrows }.Aggregate(code, (acc, keys) => Solver.Type(acc, keys).Value);

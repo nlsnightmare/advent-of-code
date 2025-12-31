@@ -1,4 +1,4 @@
-record class Vec2(int x, int y)
+public record class Vec2(int x, int y)
 {
     public List<Vec2> Neighbours() =>
         new List<Vec2> { new(x, y - 1), new(x, y + 1), new(x - 1, y), new(x + 1, y) };
@@ -13,4 +13,13 @@ record class Vec2(int x, int y)
 
     public static float Manhattan(Vec2 a, Vec2 b) =>
         Math.Abs(a.x - b.x) + Math.Abs(a.y - b.y);
+
+    internal static Vec2 FromChar(char pos) => pos switch {
+        '>' => new(1, 0),
+        '<' => new (-1, 0),
+        'v' => new (0, 1),
+        '^' => new (0, -1),
+        _ => throw new ArgumentException(nameof(pos))
+    };
+    
 }
